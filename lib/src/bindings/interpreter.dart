@@ -131,3 +131,21 @@ Pointer<TfLiteTensor> Function(
 
 typedef _TfLiteInterpreterGetOutputTensor_native_t = Pointer<TfLiteTensor>
     Function(Pointer<TfLiteInterpreter> interpreter, Int32 outputIndex);
+
+// Interpreter Train
+// inteded to be invoked by train(), this is the actual function that calls the native code
+// interpreterPtr
+// inputTensorsDataPtr
+// outputTensorsDataPtr
+
+double Function(Pointer<TfLiteInterpreter> interpreterPtr,
+        Pointer<Float> inputTensorsDataPtr, Pointer<Float> outputTensorsDataPtr)
+    tfLiteInterpreterTrain = tflitelib
+        .lookup<NativeFunction<_TfLiteInterpreterTrain_native_t>>(
+            'TfLiteInterpreterTrain')
+        .asFunction();
+
+typedef _TfLiteInterpreterTrain_native_t = Double Function(
+    Pointer<TfLiteInterpreter> interpreterPtr,
+    Pointer<Float> inputTensorsDataPtr,
+    Pointer<Float> outputTensorsDataPtr);

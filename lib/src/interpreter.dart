@@ -313,4 +313,80 @@ class Interpreter {
   //TODO: (JAVA) void modifyGraphWithDelegate(Delegate delegate)
   //TODO: (JAVA) void resetVariableTensors()
 
+  /// Train the model with the given inputs [List<List<num>>] and outputs [List<List<num>>].
+  /// Returns the loss value of the model. Intended to be run in a loop.
+
+  double train(List<List<num>> inputs, List<List<num>> outputs) {
+    if (inputs.length != outputs.length) {
+      throw ArgumentError(
+          'The number of inputs and outputs must be the same. Got ${inputs.length} inputs and ${outputs.length} outputs.');
+    }
+    if (inputs.isEmpty) {
+      throw ArgumentError('The number of inputs and outputs must be > 0.');
+    }
+    if (inputs[0].length != getInputTensor(0).shape[1]) {
+      throw ArgumentError(
+          'The number of inputs must be the same as the number of inputs in the model. Got ${inputs[0].length} inputs and ${getInputTensor(0).shape[1]} inputs in the model.');
+    }
+    if (outputs[0].length != getOutputTensor(0).shape[1]) {
+      throw ArgumentError(
+          'The number of outputs must be the same as the number of outputs in the model. Got ${outputs[0].length} outputs and ${getOutputTensor(0).shape[1]} outputs in the model.');
+    }
+
+    final inputTensors = getInputTensors();
+    final outputTensors = getOutputTensors();
+
+    final inputTensorsCount = inputTensors.length;
+    final outputTensorsCount = outputTensors.length;
+
+    final inputTensorsData = List.generate(
+        inputTensorsCount, (i) => inputTensors[i].data.buffer.asFloat32List(),
+        growable: false);
+    final outputTensorsData = List.generate(
+        outputTensorsCount, (i) => outputTensors[i].data.buffer.asFloat32List(),
+        growable: false);
+
+    final int inputTensorsDataLength = inputTensorsData[0].length;
+
+    final int outputTensorsDataLength = outputTensorsData[0].length;
+
+    final int inputTensorsDataSize = inputTensorsDataLength * sizeOf<Float>();
+
+    final int outputTensorsDataSize = outputTensorsDataLength * sizeOf<Float>();
+
+    final inputTensorsDataPtr = calloc<Float>(inputTensorsDataSize);
+
+    final outputTensorsDataPtr = calloc<Float>(outputTensorsDataSize);
+
+    final inputTensorsDataPtrList = List.generate(
+        inputTensorsCount,
+        (i) => inputTensorsDataPtr
+            .elementAt(i * inputTensorsDataLength)
+            .asTypedList(inputTensorsDataLength),
+        growable: false);
+
+    final outputTensorsDataPtrList = List.generate(
+        outputTensorsCount,
+        (i) => outputTensorsDataPtr
+            .elementAt(i * outputTensorsDataLength)
+            .asTypedList(outputTensorsDataLength),
+        growable: false);
+
+    for (var i = 0; i < inputTensorsCount; i++) {
+      for (var j = 0; j < inputTensorsDataLength; j++) {
+        inputTensorsDataPtrList[i][j] = inputTensorsData[i][j];
+      }
+    }
+
+    for (var i = 0; i < outputTensorsCount; i++) {
+      for (var j = 0; j < outputTensorsDataLength; j++) {
+        outputTensorsDataPtrList[i][j] = outputTensorsData[i][j];
+      }
+    }
+
+    final loss = tfLiteInterpreterTrain(
+        _interpreter, inputTensorsDataPtr, outputTensorsDataPtr);
+
+    return loss;
+  }
 }
